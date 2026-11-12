@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/projapayuri/aframe-gesture-hands@v0.9.2/aframe-gesture-hands.js"></script>
+
+    <style>
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+        }
+        #hatbutton{
+            color:black;
+            background-color: blue;
+            padding: 10px;
+            border-radius: 10px;
+            position: fixed;
+            z-index: 999;
+            top: 220px;
+            left: 20px;
+            
+            
+        }
+ 
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <p id="robot-hp-label">ロボット HP: <span id="robothptext">50</span></p>
+        <progress id="robotHpBar" max="50" value="50"></progress>
+        <br>
+        <p>自分のHP: <span id="myHpText">50</span></p>
+        <progress id="myHpBar" max="50" value="50"></progress>
+        
+    </div>
+    <button id="hatbutton">帽子をかぶる</button>
+    
+
+    <a-scene
+        hands
+        embedded
+        arjs="sourceType: webcam"
+        cursor="rayOrigin: mouse"
+        raycaster="objects: .clickable">
+
+    
+            <a-entity hand-anchor="index:9">
+                <a-gltf-model
+                    id="robot"
+                    class="clickable"
+                    src="robot.glb"
+                    position="-0.4 0.7 -2"      
+                    scale="0.15 0.15 0.15"    
+                    rotation="0 0 0"
+                    animation-mixer="clip: RobotArmature|Robot_Idle">
+                </a-gltf-model>
+                <a-gltf-model
+                id="hat"
+                src="hat.glb"
+                position="-0.4 1.47 -2"      
+                scale="1 1 1"    
+                rotation="0 0 0"
+                visible="false"
+                >
+                    
+                </a-gltf-model>
+            </a-entity>
+        
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        const robot = document.getElementById("robot");
+        const robothptext = document.getElementById("robothptext");
+        const robotHpBar = document.getElementById("robotHpBar");
+        const myHpText = document.getElementById("myHpText");
+        const myHpBar = document.getElementById("myHpBar");
+
+        let robotHp = 50;
+        let myHp = 50;
+
+        const hitSound = new Audio("hit.mp3");
+        const missSound = new Audio("miss.mp3");
+        const deathSound = new Audio("death.mp3");
+        const enemySound = new Audio("enemy-attack.mp3");
+
+        function enemyAttack() {
+            if (myHp <= 0) {
+                return;
+            }
+
+            myHp -= Math.floor(Math.random() * 10) + 1;
+            myHp = Math.max(0, myHp);
+            myHpText.textContent = myHp;
+            myHpBar.value = myHp;
+        }
+
+        function enemyAnimation() {
+            robot.removeAttribute("animation-mixer");
+            robot.setAttribute("animation-mixer", {
+                clip: "RobotArmature|Robot_Punch",
+                loop: "once",
+                clampWhenFinished: true
+            });
+            enemySound.play();
+        }
+
+        robot.addEventListener("animation-finished", function (event) {
+            const clipName = event.detail.action.getClip().name;
+
+            if (clipName === "RobotArmature|Robot_Jump") {
+                enemyAnimation();
+            } else if (clipName === "RobotArmature|Robot_Punch") {
+                enemyAttack();
+            }
+        });
+
+        function attack() {
+            if (robotHp <= 0) {
+                return;
+            }
+
+            if (Math.random() > 0.3) {
+                missSound.play();
+                return;
+            }
+
+            const damage = Math.floor(Math.random() * 10) + 1;
+            robotHp -= damage;
+            robotHp = Math.max(0, robotHp);
+
+            robothptext.textContent = robotHp;
+            robotHpBar.value = robotHp;
+
+            if (robotHp === 0) {
+                deathAnimation();
+            } else {
+                hitAnimation();
+            }
+        }
+
+        function hitAnimation() {
+            robot.removeAttribute("animation-mixer");
+            robot.setAttribute("animation-mixer", {
+                clip: "RobotArmature|Robot_Jump",
+                loop: "once",
+                clampWhenFinished: true
+            });
+            hitSound.play();
+        }
+
+        function deathAnimation() {
+            robot.removeAttribute("animation-mixer");
+            robot.setAttribute("animation-mixer", {
+                clip: "RobotArmature|Robot_Death",
+                loop: "once",
+                clampWhenFinished: true
+            });
+            deathSound.play();
+        }
+
+        function robotWave() {
+            robot.setAttribute("animation-mixer", "clip", "RobotArmature|Robot_Wave");
+        }
+
+        robot.addEventListener("click", attack);
+        const hatButton = document.getElementById("hatbutton");
+        const hat = document.getElementById("hat");
+
+        hatButton.addEventListener("click", function() {
+
+          const isVisible = hat.getAttribute("visible");
+
+           hat.setAttribute("visible", !isVisible);
+
+                if (!isVisible) {
+                hatButton.textContent = "帽子をぬぐ";
+                } else {
+                hatButton.textContent = "帽子をかぶる";
+               }
+         });
+    </script>
+</body>
+</html>
